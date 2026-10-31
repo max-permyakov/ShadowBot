@@ -30,6 +30,9 @@ import os
 
 BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
 MINIAPP_URL = os.getenv("MINIAPP_URL", "").strip()
+# Прокси/туннель для обхода блокировки Telegram провайдером,
+# например: socks5://127.0.0.1:40000 (Cloudflare WARP в режиме proxy)
+PROXY_URL = os.getenv("PROXY_URL", "").strip()
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 log = logging.getLogger("shadowbot-bot")
@@ -81,7 +84,15 @@ async def main() -> None:
     if not BOT_TOKEN:
         raise SystemExit("BOT_TOKEN не задан в .env")
 
-    bot = Bot(token=BOT_TOKEN)
+    # Обход блокировки Telegram провайдером (если настроен РROXY_URL)
+    if PROXY_URL:
+        from aiogram.client.session.aiohttp import AiohttpSession
+
+        session = AiohttpSession(proxy=PROXY_URL)
+        bot = Bot(token=BOT_TOKEN, session=session)
+        log.info("Бот использует прокси: %s", PROXY_URL)
+    else:
+        bot = Bot(token=BOT_TOKEN)
     dp = Dispatcher()
     dp.message.register(cmd_start, CommandStart())
     dp.message.register(cmd_id, F.text == "/id")

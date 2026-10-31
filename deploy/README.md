@@ -110,6 +110,38 @@ sudo systemctl reload caddy
 
 HTTPS-сертификаты Caddy получит сам.
 
+## 7. Обход блокировки Telegram провайдером
+
+Часто на серверах в РФ `api.telegram.org` недоступен напрямую. Решение — Cloudflare
+WARP в режиме **локального SOCKS5-прокси**: туннелируется только трафик, который
+явно отправлен через него (бот), вся система и туннель для мини-аппа работают
+как раньше.
+
+```bash
+bash deploy/setup-warp-proxy.sh   # ставит warp-cli, включает режим proxy
+```
+
+Затем в `.env` на сервере:
+
+```
+PROXY_URL=socks5://127.0.0.1:40000
+```
+
+и `sudo systemctl restart shadowbot-bot`. Проверка:
+
+```bash
+curl -x socks5h://127.0.0.1:40000 https://api.telegram.org/ -I
+```
+
+Альтернатива без WARP — [zapret](https://github.com/bol-van/zapret) (DPI-bypass,
+демон с хостлистом `telegram.org`; прозрачно для системы, но настройки
+чувствительнее к конкретному провайдеру).
+
+> Локальная разработка на Windows — вариант под капотом
+> [Cloudflare WARP](https://one.one.one.one/) (VPN на всю систему, Telegram
+> Desktop сразу заработает) или [zapret-win-bundle](https://github.com/bol-van/zapret-win-bundle)
+> с хостлистом на telegram.org. `PROXY_URL` тогда не нужен.
+
 ## Бэкап данных магазина
 
 ```bash

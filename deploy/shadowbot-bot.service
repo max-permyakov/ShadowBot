@@ -6,6 +6,9 @@ Wants=network-online.target
 [Service]
 Type=simple
 WorkingDirectory=/opt/shadowbot
+# Если включён обход блокировки провайдера (WARP/zapret), тяни его первым
+After=network-online.target shadowbot-api.service
+Wants=network-online.target
 ExecStart=/opt/shadowbot/server/.venv/bin/python bot/main.py
 Restart=always
 RestartSec=3
