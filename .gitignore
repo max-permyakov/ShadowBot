@@ -1,0 +1,17 @@
+# Зависимости
+node_modules/
+miniapp/node_modules/
+server/.venv/
+.venv/
+
+# Сборки
+miniapp/dist/
+
+# Данные и секреты
+server/data/
+.env
+
+# Мусор
+__pycache__/
+*.pyc
+.DS_Store

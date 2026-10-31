@@ -1,0 +1,14 @@
+[Unit]
+Description=ShadowBot Telegram Bot
+After=network-online.target shadowbot-api.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/shadowbot
+ExecStart=/opt/shadowbot/server/.venv/bin/python bot/main.py
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

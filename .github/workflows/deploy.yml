@@ -1,0 +1,44 @@
+name: Deploy ShadowBot to home server
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: miniapp/package-lock.json
+      - name: Build mini app
+        working-directory: miniapp
+        run: npm ci && npm run build
+      - name: Copy files to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          source: "miniapp/dist,server,bot,requirements.txt,.env.example,deploy"
+          target: /opt/shadowbot
+          rm: false
+      - name: Install & restart services
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd /opt/shadowbot
+            [ -d server/.venv ] || (python3 -m venv server/.venv && server/.venv/bin/pip install -r requirements.txt)
+            sudo systemctl restart shadowbot-api shadowbot-bot
+            systemctl is-active shadowbot-api shadowbot-bot
