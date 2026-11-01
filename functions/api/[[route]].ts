@@ -58,15 +58,15 @@ interface FnCtx {
   params: { route?: string | string[] };
 }
 
-// ---------- лимиты (как в server/config.py; видео ≤ 24 МБ из-за лимита KV-значения 25 МБ) ----------
+// ---------- лимиты (как в server/config.py; единый потолок KV-значения 25 МБ) ----------
 const MAX_TITLE = 64;
 const MAX_CATEGORY = 32;
 const MAX_SHORT = 140;
 const MAX_DESCRIPTION = 4000;
 const MAX_PRICE = 32;
 const MAX_MEDIA_ITEMS = 10;
-const MAX_PHOTO_BYTES = 10 * 1024 * 1024; // 10 МБ
-const MAX_VIDEO_BYTES = 24 * 1024 * 1024; // 24 МБ (в FastAPI было 30, KV хранит ≤ 25)
+const MAX_PHOTO_BYTES = 24 * 1024 * 1024; // 24 МБ (KV value ≤ 25 МБ)
+const MAX_VIDEO_BYTES = 24 * 1024 * 1024; // 24 МБ (в FastAPI было 30, KV вмещает ≤ 25)
 const PHOTO_EXTS = [".jpg", ".jpeg", ".png", ".webp", ".gif"];
 const VIDEO_EXTS = [".mp4", ".webm", ".mov", ".m4v"];
 const MEDIA_URL_RE = /^\/api\/media\/[A-Za-z0-9._-]+$/;
@@ -428,7 +428,10 @@ export const onRequest = async (ctx: FnCtx): Promise<Response> => {
     if (segs[0] === "media" && method === "GET" && segs.length === 2) {
       const name = segs[1];
       if (!/^[A-Za-z0-9._-]+$/.test(name)) return notFound();
-      const obj = await env.MEDIA.getWithMetadata<{ ct?: string }>(`media:${name}`);
+      const obj = await env.MEDIA.getWithMetadata<{ ct?: string }>(
+        `media:${name}`,
+        { type: "arrayBuffer" }, // binary! по умолчанию text — испортит бинарник (ef bf bd…)
+      );
       if (!obj || obj.value === null) return notFound("Медиа не найдено");
       return new Response(obj.value, {
         headers: { "Content-Type": obj.metadata?.ct ?? contentTypeFor(name) },
