@@ -178,6 +178,16 @@ EOF
 Так apt, GitHub и остальная сеть идут мимо nfqws — минимальный риск
 сломать обычный трафик.
 
+> **Расширение хостлиста по мере надобности:** в кейсе выяснилось, что
+> провайдер блокирует по DPI не только Telegram, но и Cloudflare
+> (`www.cloudflare.com`, `api.cloudflare.com` — timeout). Добавление в
+> хостлист `cloudflare.com`, `*.cloudflare.com`, `cloudflareclient.com`,
+> `*.cloudflareclient.com`, `argotunnel.com`, `*.argotunnel.com` починило
+> доступ (200 OK за 0.5 с) той же стратегией. Это критично, если на сервере
+> планируется Cloudflare Tunnel (`cloudflared`): без этих доменов в хостлисте
+> туннель просто не установится. После правки хостлиста —
+> `sudo systemctl restart zapret`.
+
 ### 4.3. Закрепляем живые IP в `/etc/hosts`
 
 Реальный показ DNS в кейсе: провайдерский резолвер отдавал для
