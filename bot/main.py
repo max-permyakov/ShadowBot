@@ -50,13 +50,13 @@ async def cmd_start(message: Message) -> None:
         )
     kb = InlineKeyboardMarkup(inline_keyboard=kb_rows)
     webapp_line = (
-        "\nНажми кнопку ниже и выбирай картинку — всё заказывается в пару тапов 🔥"
+        "\nКак это устроено? Выбери что тебе интересно или найди модельку с makerworld.com, также можешь создать свою! и я передам её на печать, а забрать её можно будет прямо отсюда\nНажми кнопку ниже и исследуй🔥"
         if MINIAPP_URL
         else "\nСкоро тут появится кнопка магазина — попроси admin настроить MINIAPP_URL."
     )
     await message.answer(
         f"Привет, {message.from_user.first_name if message.from_user else 'друг'}! 👋\n"
-        f"Я ShadowBot — помогаю заказать изделия с 3D-принтера."
+        f"Я ShadowBot — помогаю заказать изделия с 3D-принтера, разработку программ, телеграм-ботов/mini apps и веб-сайтов"
         f"{webapp_line}",
         reply_markup=kb,
     )
