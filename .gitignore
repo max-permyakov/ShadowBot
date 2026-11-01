@@ -6,6 +6,12 @@ server/.venv/
 
 # Сборки
 miniapp/dist/
+public/*
+!public/.gitkeep
+
+# CF Pages локальные секреты
+.dev.vars
+.wrangler/
 
 # Данные и секреты
 server/data/

@@ -1,0 +1,4 @@
+# Локальные переменные для `npx wrangler pages dev` (создай этот файл сам, не коммитится).
+BOT_TOKEN=123:TEST_TOKEN
+OWNER_USERNAME=Massimo_16
+ADMIN_IDS=1416853313

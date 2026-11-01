@@ -1,0 +1,17 @@
+# Конфигурация Cloudflare Pages (config-as-code).
+# Используется `npx wrangler pages dev` локально и при деплое `npx wrangler pages deploy`.
+# KV-пространство MEDIA: сначала `npx wrangler kv namespace create MEDIA`,
+# затем впиши полученный id в строку ниже. BOT_TOKEN секретом НЕ сюда:
+# `npx wrangler pages secret put BOT_TOKEN --project-name shadowbot-shop`
+
+name = "shadowbot-shop"
+pages_build_output_dir = "public"
+compatibility_date = "2026-01-01"
+
+[vars]
+OWNER_USERNAME = "Massimo_16"
+ADMIN_IDS = "1416853313"
+
+[[kv_namespaces]]
+binding = "MEDIA"
+id = "SET_KV_ID_HERE"
