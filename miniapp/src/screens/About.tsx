@@ -206,7 +206,7 @@ export default function About({
       </div>
 
       <div className="about__head">
-        <img className="about__avatar" src="logo.jpg" alt="" />
+        <img className="about__avatar" src="https://avatars.githubusercontent.com/u/224455142?v=4" alt="" />
         <div>
           <h2 className="about__name">Макс</h2>
           <Caption className="about__role">backend-разработчик · 3D-печатник · Инженер</Caption>

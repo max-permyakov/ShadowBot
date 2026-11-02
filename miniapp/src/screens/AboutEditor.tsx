@@ -112,6 +112,7 @@ export default function AboutEditor({
         details: (w.details || "").trim().slice(0, 4000),
         media: (w.media ?? []).filter((u) => /^\/api\/media\/[A-Za-z0-9._-]+$/.test(u)).slice(0, 6),
         egg: (w.egg || "").trim().slice(0, 4),
+        eggText: (w.eggText || "").trim().slice(0, 160),
       }))
       .filter((w) => w.title && /^https:\/\//.test(w.url));
     if (works.length && worksClean.length !== works.length) {
@@ -208,6 +209,16 @@ export default function AboutEditor({
               />
               <span className="about-editor__hint">оставь пустым, чтобы не прятать пасхалку</span>
             </div>
+            {(w.egg ?? "").trim() && (
+              <Textarea
+                className="editor__textarea"
+                placeholder="Своё сообщение пасхалки (покажется при поимке)"
+                value={w.eggText ?? ""}
+                maxLength={160}
+                rows={2}
+                onChange={(e) => setWork(i, { eggText: e.target.value })}
+              />
+            )}
 
             {/* картинки проекта */}
             <input

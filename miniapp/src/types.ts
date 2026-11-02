@@ -59,6 +59,27 @@ export interface AboutWork {
   media?: string[];
   /** Эмодзи-пасхалка, спрятанная на странице проекта (например 🐧). */
   egg?: string;
+  /** Своё сообщение пасхалки (показывается при поимке вместо словаря). */
+  eggText?: string;
+}
+
+/** Карточка модели с Printables (динамическая, в БД не хранится). */
+export interface PwCard {
+  id: string;
+  name: string;
+  summary: string;
+  author: string;
+  likes: number;
+  downloads: number;
+  cover: string;
+  images: string[];
+  url: string;
+}
+
+/** Страница витрины Printables. */
+export interface PwPage {
+  items: PwCard[];
+  nextOffset: number;
 }
 
 export interface AboutData {
@@ -104,7 +125,7 @@ export function addFoundEgg(egg: string): string[] {
 /** Fallback, пока /api/about недоступен. */
 export const DEFAULT_ABOUT: AboutData = {
   intro:
-    "Привет! Я Массимо 👋 Backend-разработчик и 3D-печатник из Краснодара. Пишу на C#, Python и JavaScript: боты, сайты, мини-аппы. А ещё люблю печатать на 3D-принтере — от фигурок до полезных вещей. Здесь можно заказать и то, и другое.",
+    "Привет! Я Макс 👋 Backend-разработчик и 3D-печатник из Краснодара. Пишу на C#, Python и JavaScript: боты, сайты, мини-аппы. А ещё люблю печатать на 3D-принтере — от фигурок до полезных вещей. Здесь можно заказать и то, и другое.",
   works: [
     {
       emoji: "🖨",

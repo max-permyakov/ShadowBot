@@ -1,4 +1,4 @@
-import type { AboutData, AppConfig, Product, Section, WhoAmI } from "./types";
+import type { AboutData, AppConfig, PwPage, Product, Section, WhoAmI } from "./types";
 
 /**
  * initData от Telegram для проверки прав админа на сервере.
@@ -110,6 +110,12 @@ export function uploadMedia(
 
 export function getAbout(): Promise<AboutData> {
   return request<AboutData>("/api/about").then(normalizeAbout);
+}
+
+// ---------- Printables (динамическая витрина) ----------
+
+export function getPrintables(offset: number, limit = 12): Promise<PwPage> {
+  return request<PwPage>(`/api/printables?offset=${offset}&limit=${limit}`);
 }
 
 function normalizeAbout(data: AboutData): AboutData {

@@ -4,6 +4,7 @@ import type { Product, Section } from "../types";
 import { SECTIONS, sectionOf } from "../types";
 import { inTelegram, hapticSelect } from "../telegram";
 import ProductCard from "../components/ProductCard";
+import PrintablesFeed from "../components/PrintablesFeed";
 
 export default function Catalog({
   products,
@@ -137,6 +138,9 @@ export default function Catalog({
           ))}
         </div>
       )}
+
+      {/* витрина Printables — только в разделе печати */}
+      {section === "print" && <PrintablesFeed />}
     </div>
   );
 }

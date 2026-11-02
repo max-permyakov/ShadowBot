@@ -22,7 +22,11 @@ export default function Work({
 
   const [caught, setCaught] = useState(() => (work.egg ? eggsFound().includes(work.egg) : true));
   const [eggToast, setEggToast] = useState<string | null>(null);
-  const eggMsg = work.egg ? EGG_MS[work.egg] ?? `${work.egg} пасхалка найдена!` : null;
+  const eggMsg = work.eggText?.trim()
+    ? work.eggText.trim()
+    : work.egg
+      ? EGG_MS[work.egg] ?? `${work.egg} пасхалка найдена!`
+      : null;
 
   const catchEgg = () => {
     if (caught || !work.egg) return;

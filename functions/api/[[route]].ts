@@ -49,6 +49,7 @@ interface AboutWork {
   details?: string;
   media?: string[];
   egg?: string;
+  eggText?: string;
 }
 
 interface AboutData {
@@ -102,6 +103,7 @@ const MAX_WORK_DESC = 140;
 const MAX_WORK_DETAILS = 4000;
 const MAX_WORK_URL = 300;
 const MAX_WORK_MEDIA = 6;
+const MAX_WORK_EGG_TEXT = 160;
 
 // ---------- демо-каталог (как в server/main.py) ----------
 const DEMO_PRODUCTS = [
@@ -161,7 +163,7 @@ const DEMO_PRODUCTS = [
 // ---------- раздел «О мне» (дефолт из GitHub мастера) ----------
 const DEFAULT_ABOUT: AboutData = {
   intro:
-    "Привет! Я Массимо 👋 Backend-разработчик и 3D-печатник из Краснодара. " +
+    "Привет! Я Макс 👋 Backend-разработчик и 3D-печатник из Краснодара. " +
     "Пишу на C#, Python и JavaScript: боты, сайты, мини-аппы. " +
     "А ещё люблю печатать на 3D-принтере — от фигурок до полезных вещей. " +
     "Здесь можно заказать и то, и другое.",
@@ -233,6 +235,44 @@ const DEFAULT_ABOUT: AboutData = {
 // ---------- мелкие утилиты ----------
 function nowIso(): string {
   return new Date().toISOString().replace(/\.\d+Z$/, "Z");
+}
+
+/** Целое из строки с ограничениями; при ошибке — default. */
+function clampInt(raw: string, min: number, max: number, def: number): number {
+  const n = Number.parseInt(raw, 10);
+  if (!Number.isFinite(n)) return def;
+  return Math.min(max, Math.max(min, n));
+}
+
+// ---------- Printables: витрина моделей (кэш пишется с домашнего сервера таймером) ----------
+// Сервер (у него IP не в датацентре) по таймеру тянет тренды Printables и кладёт
+// страницы по 12 записей в KV: ключи printables:popular:<offset>. Воркер только читает.
+const PRINTABLES_PAGE = 12;
+const PRINTABLES_PAGES = 5; // 0,12,24,36,48 — до 60 карточек за скролл-сессию
+
+interface PwPage {
+  items: Array<{
+    id: string;
+    name: string;
+    summary: string;
+    author: string;
+    likes: number;
+    downloads: number;
+    cover: string;
+    images: string[];
+    url: string;
+  }>;
+  nextOffset: number;
+}
+
+async function printablesFromCache(env: Env, offset: number, limit: number): Promise<PwPage | null> {
+  // выравниваем запрос по границе кэшированной страницы
+  const base = Math.floor(offset / PRINTABLES_PAGE) * PRINTABLES_PAGE;
+  const stored = await env.MEDIA.get<PwPage>(`printables:popular:${base}`, "json");
+  if (!stored || !Array.isArray(stored.items)) return null;
+  const from = offset - base;
+  const items = stored.items.slice(from, from + limit);
+  return { items, nextOffset: offset + items.length };
 }
 
 function json(
@@ -466,6 +506,11 @@ function validateAbout(
     const url = str(w.url);
     const details = str(w.details);
     const egg = str(w.egg).slice(0, 4);
+    const eggText = str(w.eggText);
+    if (eggText.length > MAX_WORK_EGG_TEXT) {
+      errors.push(`works: eggText до ${MAX_WORK_EGG_TEXT} символов`);
+      return null;
+    }
     if (!title || title.length > MAX_WORK_TITLE) {
       errors.push(`works: title обязателен, до ${MAX_WORK_TITLE} символов`);
       return null;
@@ -503,6 +548,7 @@ function validateAbout(
       ...(details ? { details } : {}),
       ...(media.length ? { media } : {}),
       ...(egg ? { egg } : {}),
+      ...(eggText ? { eggText } : {}),
     });
   }
   return { intro, works };
@@ -643,6 +689,22 @@ export const onRequest = async (ctx: FnCtx): Promise<Response> => {
     // GET /api/about — публичный
     if (segs[0] === "about" && segs.length === 1 && method === "GET") {
       return json(await ensureAbout(env));
+    }
+
+    // GET /api/printables?offset=… — витрина трендов Printables из KV-кэша (пишет таймер на сервере)
+    if (segs[0] === "printables" && segs.length === 1 && method === "GET") {
+      const urlObj = new URL(request.url);
+      const offset = clampInt(urlObj.searchParams.get("offset") ?? "0", 0, 2400, 0);
+      const limit = clampInt(urlObj.searchParams.get("limit") ?? "12", 4, 24, PRINTABLES_PAGE);
+      if (offset >= PRINTABLES_PAGE * PRINTABLES_PAGES) {
+        return json({ items: [], nextOffset: offset });
+      }
+      const page = await printablesFromCache(env, offset, limit);
+      if (!page) {
+        // кэш ещё не готов (таймер не отработал) — короткая «пустая» страница
+        return json({ items: [], nextOffset: offset });
+      }
+      return json(page);
     }
 
     // ---------- медиа ----------
