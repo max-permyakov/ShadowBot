@@ -17,6 +17,7 @@ import ProductDetail from "./screens/ProductDetail";
 import Editor from "./screens/Editor";
 import About from "./screens/About";
 import AboutEditor from "./screens/AboutEditor";
+import Work from "./screens/Work";
 import Toast from "./components/Toast";
 import { type ToastData } from "./components/ToastTypes";
 
@@ -78,6 +79,7 @@ export function App() {  const [screen, setScreen] = useState<Screen>({ name: "c
       editor: { name: "catalog" },
       about: { name: "catalog" },
       "about-editor": { name: "about" },
+      work: { name: "about" },
     };
     showBack(() => setScreen(back[screen.name] ?? { name: "catalog" }));
     return () => {
@@ -188,7 +190,15 @@ export function App() {  const [screen, setScreen] = useState<Screen>({ name: "c
       <About
         isAdmin={isAdmin}
         onBack={() => setScreen({ name: "catalog" })}
+        onOpenWork={(work) => setScreen({ name: "work", work })}
         onEditAbout={() => setScreen({ name: "about-editor" })}
+      />
+    );
+  } else if (screen.name === "work") {
+    body = (
+      <Work
+        work={screen.work}
+        onBack={() => setScreen({ name: "about" })}
         notify={notify}
       />
     );

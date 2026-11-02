@@ -46,6 +46,9 @@ interface AboutWork {
   title: string;
   description: string;
   url: string;
+  details?: string;
+  media?: string[];
+  egg?: string;
 }
 
 interface AboutData {
@@ -95,8 +98,10 @@ const MAX_ABOUT_INTRO = 2000;
 const MAX_ABOUT_WORKS = 12;
 const MAX_WORK_EMOJI = 8;
 const MAX_WORK_TITLE = 64;
-const MAX_WORK_DESC = 200;
+const MAX_WORK_DESC = 140;
+const MAX_WORK_DETAILS = 4000;
 const MAX_WORK_URL = 300;
+const MAX_WORK_MEDIA = 6;
 
 // ---------- демо-каталог (как в server/main.py) ----------
 const DEMO_PRODUCTS = [
@@ -161,13 +166,67 @@ const DEFAULT_ABOUT: AboutData = {
     "А ещё люблю печатать на 3D-принтере — от фигурок до полезных вещей. " +
     "Здесь можно заказать и то, и другое.",
   works: [
-    { emoji: "🖨", title: "ShadowStore", description: "Этот магазин: Telegram-бот + мини-апп на React и Cloudflare Pages.", url: "https://github.com/max-permyakov/ShadowBot" },
-    { emoji: "🎓", title: "Collegium", description: "Платформа для студентов колледжа: расписание, оценки, кружки.", url: "https://github.com/max-permyakov/Collegium" },
-    { emoji: "🛒", title: "XenonStore", description: "Реалистичное e-commerce приложение с корзиной и заказами.", url: "https://github.com/max-permyakov/XenonStore" },
-    { emoji: "💬", title: "MessengerWithAi", description: "Мессенджер с AI-ассистентом на базе Ollama. React + SignalR.", url: "https://github.com/max-permyakov/MessengerWithAi" },
-    { emoji: "🤖", title: "TgBot-ollama-v2", description: "Telegram-бот с локальным LLM. Приватность-first, на aiogram.", url: "https://github.com/max-permyakov/TgBot-ollama-v2" },
-    { emoji: "🐍", title: "Snake in Console", description: "Классическая змейка прямо в консоли C#. Экскурс в ретро.", url: "https://github.com/max-permyakov/Snake-in-Console-CS" },
-    { emoji: "🌐", title: "Портфолио", description: "Личный сайт: кто я и что умею.", url: "https://max-permyakov.github.io/portfolio/" },
+    {
+      emoji: "🖨",
+      title: "ShadowStore",
+      description: "Этот магазин: Telegram-бот + мини-апп на React и Cloudflare Pages.",
+      url: "https://github.com/max-permyakov/ShadowBot",
+      details:
+        "Магазин прямо в Telegram: карточки товаров с фото и видео, разделы каталога, заказы в чат владельцу и админ-CRUD прямо из приложения.\n\nСтек: React + Vite + telegram-ui на фронте, Cloudflare Pages Functions + KV на бэкенде, aiogram 3 для бота. Хостинг полностью бесплатный.",
+      egg: "🔒",
+    },
+    {
+      emoji: "🎓",
+      title: "Collegium",
+      description: "Платформа для студентов колледжа: расписание, оценки, кружки.",
+      url: "https://github.com/max-permyakov/Collegium",
+      details:
+        "Всё в одном месте: расписание пар, успеваемость, кружки и объявления. Студенты заходят с телефона и видят только то, что нужно.\n\nСтек: ASP.NET Core (C#), Entity Framework, PostgreSQL, server-side рендеринг + Bootstrap.",
+    },
+    {
+      emoji: "🛒",
+      title: "XenonStore",
+      description: "Реалистичное e-commerce приложение с корзиной и заказами.",
+      url: "https://github.com/max-permyakov/XenonStore",
+      details:
+        "Магазин как настоящий: каталог, фильтры, корзина, оформление заказа, история. Тёмная тема и плавная анимация.\n\nСтек: frontend React + SCSS, бэкенд на ASP.NET Core.",
+      egg: "👾",
+    },
+    {
+      emoji: "💬",
+      title: "MessengerWithAi",
+      description: "Мессенджер с AI-ассистентом на базе Ollama. React + SignalR.",
+      url: "https://github.com/max-permyakov/MessengerWithAi",
+      details:
+        "Общение в реальном времени на SignalR: чаты, статусы доставки, тёмная тема. Внутри живёт AI-ассистент на локальной LLM через Ollama — не просто чат-бот, а полноценный собеседник со своей памятью.\n\nСтек: React (TypeScript), ASP.NET Core + SignalR, Ollama.",
+    },
+    {
+      emoji: "🤖",
+      title: "TgBot-ollama-v2",
+      description: "Telegram-бот с локальным LLM. Приватность-first, на aiogram.",
+      url: "https://github.com/max-permyakov/TgBot-ollama-v2",
+      details:
+        "Telegram-бот, который общается через локальную LLM (Ollama): ничего не уходит наружу, всё крутится на собственном сервере. Кастомные личности, память диалога, тонкая настройка характера персонажей.\n\nСтек: Python, aiogram 3, SQLite.",
+      egg: "🐧",
+    },
+    {
+      emoji: "🐍",
+      title: "Snake in Console",
+      description: "Классическая змейка прямо в консоли C#. Экскурс в ретро.",
+      url: "https://github.com/max-permyakov/Snake-in-Console-CS",
+      details:
+        "Ретро-змейка без движков и unity — чистый C# и консольный рендеринг. Скроллинг, генерация еды, паузы, растущая сложность.\n\nХорошая стартовая точка для консольных приложений на .NET.",
+      egg: "🐍",
+    },
+    {
+      emoji: "🌐",
+      title: "Портфолио",
+      description: "Личный сайт: кто я и что умею.",
+      url: "https://max-permyakov.github.io/portfolio/",
+      details:
+        "Одностраничный личный сайт: портфолио, контакты, тёмная тема. Развёрнут на GitHub Pages.\n\nАдаптивная вёрстка и аккуратные анимации.",
+      egg: "☕",
+    },
   ],
 };
 
@@ -405,6 +464,8 @@ function validateAbout(
     const title = str(w.title);
     const description = str(w.description);
     const url = str(w.url);
+    const details = str(w.details);
+    const egg = str(w.egg).slice(0, 4);
     if (!title || title.length > MAX_WORK_TITLE) {
       errors.push(`works: title обязателен, до ${MAX_WORK_TITLE} символов`);
       return null;
@@ -413,11 +474,36 @@ function validateAbout(
       errors.push(`works: description до ${MAX_WORK_DESC} символов`);
       return null;
     }
+    if (details.length > MAX_WORK_DETAILS) {
+      errors.push(`works: details до ${MAX_WORK_DETAILS} символов`);
+      return null;
+    }
     if (!/^https:\/\//.test(url) || url.length > MAX_WORK_URL) {
       errors.push("works: url должен начинаться с https://");
       return null;
     }
-    works.push({ emoji, title, description, url });
+    const rawMedia = w.media ?? [];
+    if (!Array.isArray(rawMedia) || rawMedia.length > MAX_WORK_MEDIA) {
+      errors.push(`works: media — массив до ${MAX_WORK_MEDIA} картинок`);
+      return null;
+    }
+    const media: string[] = [];
+    for (const m of rawMedia) {
+      if (typeof m !== "string" || !MEDIA_URL_RE.test(m)) {
+        errors.push("works: media должен быть вида /api/media/<файл>");
+        return null;
+      }
+      media.push(m);
+    }
+    works.push({
+      emoji,
+      title,
+      description,
+      url,
+      ...(details ? { details } : {}),
+      ...(media.length ? { media } : {}),
+      ...(egg ? { egg } : {}),
+    });
   }
   return { intro, works };
 }

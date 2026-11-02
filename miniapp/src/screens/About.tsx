@@ -1,88 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import { Caption } from "@telegram-apps/telegram-ui";
 import type { AboutData, AboutWork } from "../types";
-import { DEFAULT_ABOUT } from "../types";
+import { DEFAULT_ABOUT, eggsFound } from "../types";
 import { getAbout } from "../api";
-import { hapticImpact, hapticNotify, openExternalLink } from "../telegram";
-import { inTelegram } from "../telegram";
+import { hapticImpact, hapticNotify } from "../telegram";
+import { openExternalLink } from "../telegram";
+import { MatrixRain } from "../components/MatrixRain";
 
-/** Пасхалки: падают вместе с цифрами, ловятся тапом. */
-const EGGS: Array<{ emoji: string; msg: string }> = [
-  { emoji: "🐧", msg: "Tux одобряет — Linux внутри 🐧" },
-  { emoji: "🐍", msg: "Змейка живёт в консоли… питон её приютил 🐍" },
-  { emoji: "☕", msg: "Кофе сварен: +100 к компиляции ☕" },
-  { emoji: "🔒", msg: "VPN шепчет: DPI снова плачет 🔒" },
-  { emoji: "👾", msg: "Space Invaders в шкафу — digitize! 👾" },
-];
+const OWNER_TG = "Massimo_16";
 
-/* ---------- эффект: циризиновый дождь из 0 и 1 ---------- */
-function MatrixRain() {
-  const ref = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const canvas = ref.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    let cols = 0;
-    let drops: number[] = [];
-    let raf = 0;
-    let last = 0;
-
-    const resize = () => {
-      const parent = canvas.parentElement!;
-      canvas.width = parent.clientWidth * devicePixelRatio;
-      canvas.height = parent.clientHeight * devicePixelRatio;
-      canvas.style.width = `${parent.clientWidth}px`;
-      canvas.style.height = `${parent.clientHeight}px`;
-      const size = 14 * devicePixelRatio;
-      cols = Math.ceil(canvas.width / size);
-      drops = Array.from({ length: cols }, () => Math.floor(Math.random() * cols));
-    };
-    resize();
-    window.addEventListener("resize", resize);
-
-    const draw = (t: number) => {
-      raf = requestAnimationFrame(draw);
-      if (t - last < (reduced ? 400 : 55)) return;
-      last = t;
-      const size = 14 * devicePixelRatio;
-      ctx.fillStyle = "rgba(11, 13, 18, 0.18)";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = "rgba(124, 92, 255, 0.55)";
-      ctx.font = `${size}px monospace`;
-      for (let i = 0; i < cols; i++) {
-        const ch = Math.random() > 0.5 ? "0" : "1";
-        const x = i * size;
-        const y = drops[i] * size;
-        ctx.fillText(ch, x, y);
-        if (y > canvas.height && Math.random() > 0.975) drops[i] = 0;
-        else drops[i]++;
-      }
-    };
-    ctx.fillStyle = "#0b0d12";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    raf = requestAnimationFrame(draw);
-
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("resize", resize);
-    };
-  }, []);
-
-  return <canvas ref={ref} className="about__matrix" aria-hidden />;
-}
-
-/* ---------- эффект: печатающийся текст ---------- */
-function Typewriter({ text }: { text: string }) {
+/* ---------- Печатающийся текст ---------- */
+function useTyped(text: string, speed = 26) {
   const [len, setLen] = useState(0);
-  const reduced = useRef(false);
-
   useEffect(() => {
-    reduced.current = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduced.current) {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       setLen(text.length);
       return;
     }
@@ -92,114 +23,190 @@ function Typewriter({ text }: { text: string }) {
       i++;
       setLen(i);
       if (i >= text.length) window.clearInterval(timer);
-    }, 26);
+    }, speed);
     return () => window.clearInterval(timer);
   }, [text]);
+  return { typed: text.slice(0, len), done: len >= text.length };
+}
+
+/* ---------- Терминал кто я, с выбором y/n ---------- */
+type TermLine = { cls: "dim" | "ok" | "warn" | "cmd" | "accent"; text: string };
+const Y_SEQ: TermLine[] = [
+  { cls: "cmd", text: "> y" },
+  { cls: "dim", text: "$ docker run massimo/dev-env … ok ✓" },
+  { cls: "dim", text: "$ compiling ideas [██████░░░░]  62%" },
+  { cls: "dim", text: "$ compiling ideas [██████████] 100% ✓" },
+  { cls: "ok", text: "💡 Идеи готовы к реализации!" },
+  { cls: "accent", text: "✨ Могу собрать твой проект: бот, сайт, мини-апп — или напечатать что угодно на 3D." },
+];
+const N_SEQ: TermLine[] = [
+  { cls: "cmd", text: "> n" },
+  { cls: "cmd", text: "> sudo rm -rf /" },
+  { cls: "dim", text: "rm: удаляю /мусор в проектах… ⣾" },
+  { cls: "dim", text: "rm: удаляю /баги… ⣾" },
+  { cls: "warn", text: "rm: невозможно удалить /мамины-файлы ✋ (заблокировано)" },
+  { cls: "warn", text: "rm: невозможно удалить /социалку-в-кармане ☠️ … на месте" },
+  { cls: "ok", text: "💥 Готово! Удалены только баги — остальное цело 😅" },
+];
+// Пасхалка для внимательных: и после n-ветки можно заказать проект 🙂
+
+const CITE_Y = "Прямо сейчас: напиши мне в ЛС — обсудим проект 👨‍💻";
+const CITE_N = "…шучу! Ничего не удалено — только баги почистили 😉 И даже после rm -rf проект заказать можно:";
+
+function Terminal({ intro }: { intro: string }) {
+  const { typed, done } = useTyped(intro);
+  const [ask, setAsk] = useState(false);
+  const [seq, setSeq] = useState<TermLine[] | null>(null); // какая последовательность играет
+  const [step, setStep] = useState(0); // показано строк
+  const boxRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => setAsk(done), [done]);
+
+  // выезд строк по частям
+  useEffect(() => {
+    if (!seq || step >= seq.length) return;
+    const t = window.setTimeout(() => setStep((s) => s + 1), seq[step].cls === "dim" ? 520 : 700);
+    return () => window.clearTimeout(t);
+  }, [seq, step]);
+
+  // автоскролл к последней строке (окно фиксированной высоты)
+  useEffect(() => {
+    boxRef.current?.scrollTo({ top: boxRef.current.scrollHeight });
+  }, [step, typed]);
+
+  const choose = (y: boolean) => {
+    if (seq) return; // в процессе — не позволяем менять решение
+    setSeq(y ? Y_SEQ : N_SEQ);
+    setStep(0);
+    hapticImpact();
+  };
+
+  // клавиатура на десктопе
+  useEffect(() => {
+    if (!ask || seq) return;
+    const onKey = (e: KeyboardEvent) => {
+      const k = e.key.toLowerCase();
+      if (k === "y") choose(true); else if (k === "n") choose(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [ask, seq]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+
+  const finished = !!seq && step >= seq.length;
+  const isY = seq === Y_SEQ;
+
+  const reset = () => {
+    setSeq(null);
+    setStep(0);
+    setAsk(true);
+  };
+
+  const lines = !seq ? [] : seq.slice(0, step);
 
   return (
-    <span className="about__type">
-      {text.slice(0, len)}
-      <span className={`about__caret ${len >= text.length ? "about__caret--idle" : ""}`} />
-    </span>
+    <div className="about__terminal">
+      <div className="about__term-bar">
+        <i className="about__term-dot" />
+        <i className="about__term-dot" />
+        <i className="about__term-dot" />
+        <span className="about__term-name">massimo@krasnodar:~$ whoami</span>
+      </div>
+      <div className="about__term-body" ref={boxRef}>
+        <p className="about__intro">
+          {typed}
+          <span className={`about__caret ${done ? "about__caret--idle" : ""}`} />
+        </p>
+        {ask && !seq && (
+          <div className="about__ask">
+            <span className="about__ask-q">заказать проект? [y/n]</span>
+            <button className="about__yn" onClick={() => choose(true)}>y</button>
+            <span className="about__yn-sep">/</span>
+            <button className="about__yn" onClick={() => choose(false)}>n</button>
+          </div>
+        )}
+        {lines.map((l, i) => (
+          <p key={i} className={`about__line about__line--${l.cls}`}>{l.text}</p>
+        ))}
+        {finished && (
+          <div className="about__finale">
+            {isY ? CITE_Y : CITE_N}
+            <a
+              className="about__contact"
+              href={`https://t.me/${OWNER_TG}`}
+              onClick={(e) => {
+                e.preventDefault();
+                hapticNotify("success");
+                openExternalLink(`https://t.me/${OWNER_TG}`);
+              }}
+            >
+              💬 Написать в ЛС @{OWNER_TG}
+            </a>
+            <button className="about__replay" onClick={reset}>↺ сыграть ещё раз</button>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
+/* ---------- Экран «О мне» ---------- */
 export default function About({
   isAdmin,
   onBack,
+  onOpenWork,
   onEditAbout,
-  notify,
 }: {
   isAdmin: boolean;
   onBack: () => void;
+  onOpenWork: (work: AboutWork) => void;
   onEditAbout: () => void;
-  notify: (kind: "success" | "error" | "info", message: string) => void;
 }) {
   const [data, setData] = useState<AboutData | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [found, setFound] = useState<Set<string>>(new Set());
-  const [eggToast, setEggToast] = useState<string | null>(null);
+  const [found] = useState<string[]>(() => eggsFound());
 
   useEffect(() => {
     let cancelled = false;
     getAbout()
-      .then((d) => {
-        if (!cancelled) setData(d);
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setData(DEFAULT_ABOUT);
-          setError(null); // fallback тихо: данные дефолтные
-          console.warn("about fallback:", err);
-        }
-      });
+      .then((d) => !cancelled && setData(d))
+      .catch(() => !cancelled && setData(DEFAULT_ABOUT));
     return () => {
       cancelled = true;
     };
   }, []);
 
+  // сколько всего пасхалок заложено в текущих данных
+  const totalEggs = data
+    ? new Set(data.works.map((w) => w.egg).filter(Boolean)).size
+    : 5;
+
   if (!data) {
     return (
       <div className="screen about">
-        <div className="about__loading">⏳ Загружаем «О мне»…</div>
+        <div className="about__loading">⏳ Загружаем…</div>
       </div>
     );
   }
 
-  const catchEgg = (egg: (typeof EGGS)[number]) => {
-    hapticNotify("success");
-    setFound((prev) => {
-      const next = new Set(prev);
-      if (!next.has(egg.emoji)) {
-        next.add(egg.emoji);
-        if (next.size === EGGS.length) {
-          window.setTimeout(
-            () => notify("success", "🏆 Все пасхалки найдены! Ты настоящий хакер 🌟"),
-            900,
-          );
-        }
-      }
-      return next;
-    });
-    setEggToast(egg.msg);
-    window.setTimeout(() => setEggToast(null), 2600);
-  };
-
-  const openWork = (w: AboutWork) => {
-    hapticImpact();
-    openExternalLink(w.url);
-  };
-
-  const progress = Math.round((found.size / EGGS.length) * 100);
-
   return (
     <div className="screen about">
-      {/* фон-эффект */}
+      {/* фон: цифры + пасхалки-подсказки */}
       <div className="about__bg" aria-hidden>
         <MatrixRain />
-        {EGGS.map((egg, i) => (
-          <button
-            key={egg.emoji}
-            className="about__egg"
-            style={{
-              left: `${8 + i * 18}%`,
-              animationDelay: `${i * 3.7}s`,
-              animationDuration: `${11 + i * 2.3}s`,
-              opacity: found.has(egg.emoji) ? 0.25 : 1,
-            }}
-            onClick={() => catchEgg(egg)}
-            title="?"
-          >
-            {egg.emoji}
-          </button>
-        ))}
+        {totalEggs - found.length > 0 && (
+          <div className="about__hint">{`🥚 пасхалки ещё в проектах: ${totalEggs - found.length}`}</div>
+        )}
       </div>
 
-      {!inTelegram() && (
-        <button className="web-back" onClick={onBack}>
-          ← Назад в каталог
-        </button>
-      )}
+      <div className="about__tools">
+        <button className="about__back" onClick={onBack}>← В магазин</button>
+        <span className="about__eggs-label">
+          🥚 {found.length}/{totalEggs}
+        </span>
+        {isAdmin && (
+          <button className="about__back about__back--edit" onClick={onEditAbout}>✏️</button>
+        )}
+      </div>
 
       <div className="about__head">
         <img className="about__avatar" src="logo.jpg" alt="" />
@@ -209,50 +216,39 @@ export default function About({
         </div>
       </div>
 
-      {/* печатный текст */}
-      <div className="about__terminal">
-        <div className="about__term-bar">
-          <i className="about__term-dot" />
-          <i className="about__term-dot" />
-          <i className="about__term-dot" />
-          <span className="about__term-name">massimo@krasnodar:~$ whoami</span>
+      <Terminal intro={data.intro} />
+
+      {/* прогресс пасхалок */}
+      <div className="about__eggs-progress">
+        <span className="about__eggs-label">Коллекция пасхалок</span>
+        <div className="about__eggs-bar">
+          <i style={{ width: `${totalEggs ? Math.round((found.length / totalEggs) * 100) : 0}%` }} />
         </div>
-        <p className="about__intro">
-          <Typewriter text={data.intro} />
-        </p>
       </div>
 
       {/* работы */}
       <h3 className="about__works-title">Работы и проекты</h3>
       <div className="about__works">
         {data.works.map((w, i) => (
-          <a
+          <button
             key={i}
             className="about__work"
-            href={w.url}
-            onClick={(e) => {
-              e.preventDefault();
-              openWork(w);
+            onClick={() => {
+              hapticImpact();
+              onOpenWork(w);
             }}
           >
             <span className="about__work-emoji">{w.emoji || "📦"}</span>
             <span className="about__work-body">
-              <span className="about__work-title">{w.title}</span>
+              <span className="about__work-title">
+                {w.title}
+                {w.egg && found.includes(w.egg) && <span title="пасхалка найдена"> ✦</span>}
+              </span>
               <span className="about__work-desc">{w.description}</span>
             </span>
             <span className="about__work-arrow">→</span>
-          </a>
+          </button>
         ))}
-      </div>
-
-      {/* пасхалки прогресс */}
-      <div className="about__eggs-progress">
-        <span className="about__eggs-label">
-          Пасхалки: {found.size}/{EGGS.length}
-        </span>
-        <div className="about__eggs-bar">
-          <i style={{ width: `${progress}%` }} />
-        </div>
       </div>
 
       {isAdmin && (
@@ -261,8 +257,9 @@ export default function About({
         </button>
       )}
 
-      {eggToast && <div className="about__egg-toast">{eggToast}</div>}
-      {error && <div className="about__egg-toast">{error}</div>}
+      {found.length === totalEggs && totalEggs > 0 && (
+        <div className="about__cheers">🏆 Все пасхалки найдены — ты настоящий хакер! 🌟</div>
+      )}
     </div>
   );
 }
