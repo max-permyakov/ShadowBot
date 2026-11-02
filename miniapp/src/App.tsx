@@ -6,6 +6,7 @@ import {
   deleteProduct,
   getConfig,
   getProducts,
+  updateAbout,
   updateProduct,
   whoAmI,
 } from "./api";
@@ -14,6 +15,8 @@ import type { Screen } from "./navigation";
 import Catalog from "./screens/Catalog";
 import ProductDetail from "./screens/ProductDetail";
 import Editor from "./screens/Editor";
+import About from "./screens/About";
+import AboutEditor from "./screens/AboutEditor";
 import Toast from "./components/Toast";
 import { type ToastData } from "./components/ToastTypes";
 
@@ -70,16 +73,21 @@ export function App() {  const [screen, setScreen] = useState<Screen>({ name: "c
       hideBack();
       return;
     }
-    showBack(() => setScreen({ name: "catalog" }));
+    const back: Partial<Record<Screen["name"], Screen>> = {
+      product: { name: "catalog" },
+      editor: { name: "catalog" },
+      about: { name: "catalog" },
+      "about-editor": { name: "about" },
+    };
+    showBack(() => setScreen(back[screen.name] ?? { name: "catalog" }));
     return () => {
       hideBack();
     };
   }, [screen]);
 
   const current = useMemo(() => {
-    if (screen.name !== "catalog") {
-      const id = screen.id;
-      return products.find((p) => p.id === id) ?? null;
+    if (screen.name === "product" || screen.name === "editor") {
+      return products.find((p) => p.id === screen.id) ?? null;
     }
     return null;
   }, [screen, products]);
@@ -125,6 +133,16 @@ export function App() {  const [screen, setScreen] = useState<Screen>({ name: "c
     }
   };
 
+  const handleSaveAbout = async (data: import("./types").AboutData) => {
+    try {
+      await updateAbout(data);
+      notify("success", "«О мне» сохранено ✅");
+      setScreen({ name: "about" });
+    } catch (err) {
+      notify("error", (err as Error).message);
+    }
+  };
+
   /* ---------- рендер ---------- */
 
   let body: React.ReactNode;
@@ -160,8 +178,25 @@ export function App() {  const [screen, setScreen] = useState<Screen>({ name: "c
     body = (
       <Editor
         product={current}
+        defaultSection={screen.section}
         onSave={(data) => void handleSave(data, screen.id)}
         onCancel={() => setScreen({ name: "catalog" })}
+      />
+    );
+  } else if (screen.name === "about") {
+    body = (
+      <About
+        isAdmin={isAdmin}
+        onBack={() => setScreen({ name: "catalog" })}
+        onEditAbout={() => setScreen({ name: "about-editor" })}
+        notify={notify}
+      />
+    );
+  } else if (screen.name === "about-editor") {
+    body = (
+      <AboutEditor
+        onSave={(data) => void handleSaveAbout(data)}
+        onCancel={() => setScreen({ name: "about" })}
       />
     );
   } else {
@@ -170,7 +205,8 @@ export function App() {  const [screen, setScreen] = useState<Screen>({ name: "c
         products={products}
         isAdmin={isAdmin}
         onOpen={(id) => setScreen({ name: "product", id })}
-        onCreate={() => setScreen({ name: "editor" })}
+        onCreate={(section) => setScreen({ name: "editor", section })}
+        onOpenAbout={() => setScreen({ name: "about" })}
       />
     );
   }

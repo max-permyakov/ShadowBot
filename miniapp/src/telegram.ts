@@ -156,3 +156,17 @@ export function openTelegramLink(url: string): void {
     window.open(url, "_blank", "noopener");
   }
 }
+
+/** Внешние http(s)-сайты: через openLink внутри Telegram, иначе window.open. */
+export function openExternalLink(url: string): void {
+  if (inTelegram()) {
+    const tg = (window as unknown as {
+      Telegram?: { WebApp?: { openLink?: (u: string) => void } };
+    }).Telegram;
+    if (tg?.WebApp?.openLink) {
+      safe(() => tg.WebApp!.openLink!(url));
+      return;
+    }
+  }
+  window.open(url, "_blank", "noopener");
+}

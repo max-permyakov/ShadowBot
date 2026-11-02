@@ -12,12 +12,16 @@
  *   GET    /api/products              — каталог
  *   GET    /api/products/<id>         — карточка
  *   POST   /api/whoami                — кто я (для админ-режима UI)
+ *   GET    /api/about                 — раздел «О мне» (публичный)
  *   POST   /api/admin/products        — создать (201)
  *   PUT    /api/admin/products/<id>   — обновить
  *   DELETE /api/admin/products/<id>   — удалить
+ *   PUT    /api/admin/about           — сохранить раздел «О мне»
  *   POST   /api/admin/upload          — загрузить медиа (multipart/form-data)
  *   GET    /api/media/<имя>           — раздача медиа
  */
+
+export type Section = "print" | "soft";
 
 interface MediaItem {
   type: "photo" | "video";
@@ -32,8 +36,21 @@ interface Product {
   description: string;
   price: string;
   media: MediaItem[];
+  section: Section;
   created_at: string;
   updated_at: string;
+}
+
+interface AboutWork {
+  emoji: string;
+  title: string;
+  description: string;
+  url: string;
+}
+
+interface AboutData {
+  intro: string;
+  works: AboutWork[];
 }
 
 interface Store {
@@ -71,12 +88,22 @@ const PHOTO_EXTS = [".jpg", ".jpeg", ".png", ".webp", ".gif"];
 const VIDEO_EXTS = [".mp4", ".webm", ".mov", ".m4v"];
 const MEDIA_URL_RE = /^\/api\/media\/[A-Za-z0-9._-]+$/;
 const DEFAULT_CATEGORY = "Другое";
+const SECTIONS: Section[] = ["print", "soft"];
+
+// ---------- лимиты «О мне» ----------
+const MAX_ABOUT_INTRO = 2000;
+const MAX_ABOUT_WORKS = 12;
+const MAX_WORK_EMOJI = 8;
+const MAX_WORK_TITLE = 64;
+const MAX_WORK_DESC = 200;
+const MAX_WORK_URL = 300;
 
 // ---------- демо-каталог (как в server/main.py) ----------
 const DEMO_PRODUCTS = [
   {
     title: "Дракончик-ночник 🐉",
     category: "Фигурки",
+    section: "print",
     short_desc: "Светящийся дракончик для полки. Меняет цвет подсветки.",
     description:
       "Милая фигурка дракончика с LED-подсветкой внутри. " +
@@ -89,6 +116,7 @@ const DEMO_PRODUCTS = [
   {
     title: "Подставка для телефона",
     category: "Подставки",
+    section: "print",
     short_desc: "Крепкая подставка с местом для зарядки и карандашей.",
     description:
       "Универсальная подставка под телефон или планшет. " +
@@ -101,6 +129,7 @@ const DEMO_PRODUCTS = [
   {
     title: "Мини-брелок с твоим именем",
     category: "Подарки",
+    section: "print",
     short_desc: "Любое имя и цвет, доставка на следующий день.",
     description:
       "Брелок для рюкзака или ключей с твоим именем. " +
@@ -110,7 +139,37 @@ const DEMO_PRODUCTS = [
     price: "от 100 ₽",
     media: [] as MediaItem[],
   },
+  {
+    title: "Telegram-бот под ключ",
+    category: "Боты",
+    section: "soft",
+    short_desc: "Автоматизация, лента заказов, интеграции.",
+    description:
+      "Делаю боты на aiogram: приём заказов, рассылки, " +
+      "админ-панель, подключение к таблицам и сайтам. " +
+      "Обсудим задачу в чате — назову срок и цену.",
+    price: "от 3 000 ₽",
+    media: [] as MediaItem[],
+  },
 ];
+
+// ---------- раздел «О мне» (дефолт из GitHub мастера) ----------
+const DEFAULT_ABOUT: AboutData = {
+  intro:
+    "Привет! Я Массимо 👋 Backend-разработчик и 3D-печатник из Краснодара. " +
+    "Пишу на C#, Python и JavaScript: боты, сайты, мини-аппы. " +
+    "А ещё люблю печатать на 3D-принтере — от фигурок до полезных вещей. " +
+    "Здесь можно заказать и то, и другое.",
+  works: [
+    { emoji: "🖨", title: "ShadowStore", description: "Этот магазин: Telegram-бот + мини-апп на React и Cloudflare Pages.", url: "https://github.com/max-permyakov/ShadowBot" },
+    { emoji: "🎓", title: "Collegium", description: "Платформа для студентов колледжа: расписание, оценки, кружки.", url: "https://github.com/max-permyakov/Collegium" },
+    { emoji: "🛒", title: "XenonStore", description: "Реалистичное e-commerce приложение с корзиной и заказами.", url: "https://github.com/max-permyakov/XenonStore" },
+    { emoji: "💬", title: "MessengerWithAi", description: "Мессенджер с AI-ассистентом на базе Ollama. React + SignalR.", url: "https://github.com/max-permyakov/MessengerWithAi" },
+    { emoji: "🤖", title: "TgBot-ollama-v2", description: "Telegram-бот с локальным LLM. Приватность-first, на aiogram.", url: "https://github.com/max-permyakov/TgBot-ollama-v2" },
+    { emoji: "🐍", title: "Snake in Console", description: "Классическая змейка прямо в консоли C#. Экскурс в ретро.", url: "https://github.com/max-permyakov/Snake-in-Console-CS" },
+    { emoji: "🌐", title: "Портфолио", description: "Личный сайт: кто я и что умею.", url: "https://max-permyakov.github.io/portfolio/" },
+  ],
+};
 
 // ---------- мелкие утилиты ----------
 function nowIso(): string {
@@ -274,15 +333,24 @@ function demoStore(): Store {
       description: demo.description || "",
       price: demo.price || "",
       media: demo.media,
+      section: demo.section as Section,
       created_at: ts,
       updated_at: ts,
     })),
   };
 }
 
+/** Миграция: товары, созданные до появления разделов, — это 3D-печать. */
+function normalizeStore(store: Store): Store {
+  for (const item of store.items) {
+    if (item.section !== "soft") item.section = "print";
+  }
+  return store;
+}
+
 async function loadStore(env: Env): Promise<Store> {
   const raw = await env.MEDIA.get<Store>("db:products", "json");
-  return raw ?? demoStore();
+  return raw ? normalizeStore(raw) : demoStore();
 }
 
 async function saveStore(env: Env, store: Store): Promise<void> {
@@ -295,10 +363,63 @@ async function saveStore(env: Env, store: Store): Promise<void> {
  */
 async function ensureStore(env: Env): Promise<Store> {
   const existing = await env.MEDIA.get<Store>("db:products", "json");
-  if (existing) return existing;
+  if (existing) return normalizeStore(existing);
   const seeded = demoStore();
   await saveStore(env, seeded);
   return seeded;
+}
+
+/* ---------- раздел «О мне» ---------- */
+
+async function aboutDefault(): Promise<AboutData> {
+  return JSON.parse(JSON.stringify(DEFAULT_ABOUT)) as AboutData;
+}
+
+async function ensureAbout(env: Env): Promise<AboutData> {
+  const existing = await env.MEDIA.get<AboutData>("db:about", "json");
+  if (existing) return existing;
+  const seeded = await aboutDefault();
+  await env.MEDIA.put("db:about", JSON.stringify(seeded));
+  return seeded;
+}
+
+function validateAbout(
+  data: Record<string, unknown>,
+  errors: string[],
+): AboutData | null {
+  const intro = data.intro;
+  if (typeof intro !== "string" || !intro.trim() || intro.length > MAX_ABOUT_INTRO) {
+    errors.push(`intro: обязательная строка до ${MAX_ABOUT_INTRO} символов`);
+    return null;
+  }
+  const rawWorks = data.works ?? [];
+  if (!Array.isArray(rawWorks) || rawWorks.length > MAX_ABOUT_WORKS) {
+    errors.push(`works: массив, не более ${MAX_ABOUT_WORKS} элементов`);
+    return null;
+  }
+  const works: AboutWork[] = [];
+  for (const raw of rawWorks) {
+    const w = raw as Record<string, unknown>;
+    const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+    const emoji = str(w.emoji).slice(0, MAX_WORK_EMOJI) || "📦";
+    const title = str(w.title);
+    const description = str(w.description);
+    const url = str(w.url);
+    if (!title || title.length > MAX_WORK_TITLE) {
+      errors.push(`works: title обязателен, до ${MAX_WORK_TITLE} символов`);
+      return null;
+    }
+    if (description.length > MAX_WORK_DESC) {
+      errors.push(`works: description до ${MAX_WORK_DESC} символов`);
+      return null;
+    }
+    if (!/^https:\/\//.test(url) || url.length > MAX_WORK_URL) {
+      errors.push("works: url должен начинаться с https://");
+      return null;
+    }
+    works.push({ emoji, title, description, url });
+  }
+  return { intro, works };
 }
 
 function validateProduct(
@@ -361,7 +482,16 @@ function validateProduct(
     if (c !== "") category = c;
   }
 
-  return { title, category, short_desc, description, price, media };
+  let section: Section = "print";
+  if (data.section !== undefined && data.section !== null) {
+    if (typeof data.section !== "string" || !SECTIONS.includes(data.section as Section)) {
+      errors.push('section: должен быть "print" или "soft"');
+      return null;
+    }
+    section = data.section as Section;
+  }
+
+  return { title, category, short_desc, description, price, media, section };
 }
 
 // ---------- раздача медиа ----------
@@ -422,6 +552,11 @@ export const onRequest = async (ctx: FnCtx): Promise<Response> => {
         user_id: uid,
         is_admin: uid !== null && adminIds(env).has(uid),
       });
+    }
+
+    // GET /api/about — публичный
+    if (segs[0] === "about" && segs.length === 1 && method === "GET") {
+      return json(await ensureAbout(env));
     }
 
     // ---------- медиа ----------
@@ -490,6 +625,17 @@ export const onRequest = async (ctx: FnCtx): Promise<Response> => {
         store.items[idx] = updated;
         await saveStore(env, store);
         return json(updated);
+      }
+
+      // PUT /api/admin/about
+      if (segs[1] === "about" && segs.length === 2 && method === "PUT") {
+        const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
+        if (!body) return json({ detail: "Некорректный JSON" }, 400);
+        const errors: string[] = [];
+        const about = validateAbout(body, errors);
+        if (!about) return json({ detail: errors.join("; ") }, 422);
+        await env.MEDIA.put("db:about", JSON.stringify(about));
+        return json(about);
       }
 
       // POST /api/admin/upload

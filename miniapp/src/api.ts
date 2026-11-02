@@ -1,4 +1,4 @@
-import type { AppConfig, Product, WhoAmI } from "./types";
+import type { AboutData, AppConfig, Product, Section, WhoAmI } from "./types";
 
 /**
  * initData от Telegram для проверки прав админа на сервере.
@@ -48,7 +48,15 @@ export function getConfig(): Promise<AppConfig> {
 }
 
 export function getProducts(): Promise<Product[]> {
-  return request<Product[]>("/api/products");
+  return request<Product[]>("/api/products").then(normalizeProducts);
+}
+
+/** Старые карточки без раздела считаем 3D-печатью. */
+function normalizeProducts(list: Product[]): Product[] {
+  for (const p of list) {
+    p.section = (p.section ?? "print") as Section;
+  }
+  return list;
 }
 
 export function whoAmI(): Promise<WhoAmI> {
@@ -96,6 +104,27 @@ export function uploadMedia(
     "/api/admin/upload",
     { method: "POST", body: form },
   );
+}
+
+// ---------- О мне ----------
+
+export function getAbout(): Promise<AboutData> {
+  return request<AboutData>("/api/about").then(normalizeAbout);
+}
+
+function normalizeAbout(data: AboutData): AboutData {
+  return {
+    intro: typeof data.intro === "string" ? data.intro : "",
+    works: Array.isArray(data.works) ? data.works : [],
+  };
+}
+
+export function updateAbout(data: AboutData): Promise<AboutData> {
+  return request<AboutData>("/api/admin/about", {
+    method: "PUT",
+    headers: JSON_INIT,
+    body: JSON.stringify(data),
+  });
 }
 
 // ---------- заказ ----------

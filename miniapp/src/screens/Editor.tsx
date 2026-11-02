@@ -7,14 +7,16 @@ import {
   Textarea,
 } from "@telegram-apps/telegram-ui";
 import type { MediaItem, Product } from "../types";
-import { CATEGORIES } from "../types";
+import { SECTIONS, sectionOf } from "../types";
+import type { Section as SectionId } from "../types";
 import { uploadMedia } from "../api";
-import { hapticImpact, hapticNotify } from "../telegram";
+import { hapticImpact, hapticNotify, hapticSelect } from "../telegram";
 import { MediaCell } from "../components/MediaCell";
 import { inTelegram } from "../telegram";
 
 type Draft = {
   title: string;
+  section: SectionId;
   category: string;
   price: string;
   short_desc: string;
@@ -24,18 +26,22 @@ type Draft = {
 
 export default function Editor({
   product,
+  defaultSection,
   onSave,
   onCancel,
 }: {
   product: Product | null;
+  defaultSection?: SectionId;
   onSave: (draft: Draft) => void;
   onCancel: () => void;
 }) {
+  const firstSection = (product?.section ?? defaultSection ?? "print") as SectionId;
   const [draft, setDraft] = useState<Draft>(
     product
       ? {
           title: product.title,
-          category: product.category || CATEGORIES[CATEGORIES.length - 1],
+          section: (product.section ?? "print") as SectionId,
+          category: product.category || sectionOf(firstSection).categories[0],
           price: product.price,
           short_desc: product.short_desc,
           description: product.description,
@@ -43,7 +49,8 @@ export default function Editor({
         }
       : {
           title: "",
-          category: CATEGORIES[0],
+          section: firstSection,
+          category: sectionOf(firstSection).categories[0],
           price: "",
           short_desc: "",
           description: "",
@@ -57,6 +64,17 @@ export default function Editor({
 
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) =>
     setDraft((d) => ({ ...d, [key]: value }));
+
+  const pickSection = (id: SectionId) => {
+    if (id === draft.section) return;
+    const cats = sectionOf(id).categories;
+    setDraft((d) => ({
+      ...d,
+      section: id,
+      category: cats.includes(d.category) ? d.category : cats[0],
+    }));
+    hapticSelect();
+  };
 
   const pickFiles = () => fileRef.current?.click();
 
@@ -98,6 +116,7 @@ export default function Editor({
     try {
       onSave({
         title: draft.title.trim(),
+        section: draft.section,
         category: draft.category,
         price: draft.price.trim(),
         short_desc: draft.short_desc.trim(),
@@ -114,7 +133,7 @@ export default function Editor({
   return (
     <div className="screen screen--editor">
       <Subheadline weight="2" className="editor__title">
-        {product ? "✏️ Редактирование" : "✨ Новая карточка"}
+        {product ? "✏️ Редактирование" : draft.section === "soft" ? "💻 Новый проект" : "✨ Новая карточка"}
       </Subheadline>
       {!inTelegram() && (
         <button className="web-back" onClick={onCancel}>
@@ -139,13 +158,29 @@ export default function Editor({
         )}
 
         <label className="editor__field">
+          <span className="editor__label">Раздел</span>
+          <div className="editor__sections">
+            {SECTIONS.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                className={`seg__btn seg__btn--editor ${s.id === draft.section ? "seg__btn--on" : ""}`}
+                onClick={() => pickSection(s.id)}
+              >
+                <span className="seg__emoji">{s.emoji}</span> {s.label}
+              </button>
+            ))}
+          </div>
+        </label>
+
+        <label className="editor__field">
           <span className="editor__label">Категория</span>
           <select
             className="editor__select"
             value={draft.category}
             onChange={(e) => set("category", e.target.value)}
           >
-            {CATEGORIES.map((c) => (
+            {sectionOf(draft.section).categories.map((c) => (
               <option key={c} value={c}>
                 {c}
               </option>
@@ -155,8 +190,10 @@ export default function Editor({
 
         <Input
           className="editor__input"
-          header="Примерная цена"
-          placeholder="например: от 350 ₽"
+          header={draft.section === "soft" ? "Стоимость работы" : "Примерная цена"}
+          placeholder={
+            draft.section === "soft" ? "например: от 3 000 ₽" : "например: от 350 ₽"
+          }
           value={draft.price}
           maxLength={32}
           onChange={(e) => set("price", e.target.value)}
