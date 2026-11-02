@@ -110,7 +110,7 @@ function Terminal({ intro }: { intro: string }) {
         <i className="about__term-dot" />
         <i className="about__term-dot" />
         <i className="about__term-dot" />
-        <span className="about__term-name">massimo@krasnodar:~$ whoami</span>
+        <span className="about__term-name">root@shadowserver:~$ whoami</span>
       </div>
       <div className="about__term-body" ref={boxRef}>
         <p className="about__intro">
@@ -190,18 +190,15 @@ export default function About({
 
   return (
     <div className="screen about">
-      {/* фон: цифры + пасхалки-подсказки */}
+      {/* фон: цифры */}
       <div className="about__bg" aria-hidden>
         <MatrixRain />
-        {totalEggs - found.length > 0 && (
-          <div className="about__hint">{`🥚 пасхалки ещё в проектах: ${totalEggs - found.length}`}</div>
-        )}
       </div>
 
       <div className="about__tools">
         <button className="about__back" onClick={onBack}>← В магазин</button>
         <span className="about__eggs-label">
-          🥚 {found.length}/{totalEggs}
+          👾 {found.length}/{totalEggs}
         </span>
         {isAdmin && (
           <button className="about__back about__back--edit" onClick={onEditAbout}>✏️</button>
@@ -211,20 +208,12 @@ export default function About({
       <div className="about__head">
         <img className="about__avatar" src="logo.jpg" alt="" />
         <div>
-          <h2 className="about__name">Массимо</h2>
-          <Caption className="about__role">backend-разработчик · 3D-печатник</Caption>
+          <h2 className="about__name">Макс</h2>
+          <Caption className="about__role">backend-разработчик · 3D-печатник · Инженер</Caption>
         </div>
       </div>
 
       <Terminal intro={data.intro} />
-
-      {/* прогресс пасхалок */}
-      <div className="about__eggs-progress">
-        <span className="about__eggs-label">Коллекция пасхалок</span>
-        <div className="about__eggs-bar">
-          <i style={{ width: `${totalEggs ? Math.round((found.length / totalEggs) * 100) : 0}%` }} />
-        </div>
-      </div>
 
       {/* работы */}
       <h3 className="about__works-title">Работы и проекты</h3>

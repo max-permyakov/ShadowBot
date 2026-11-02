@@ -201,7 +201,7 @@ export default function AboutEditor({
             <div className="about-editor__row-pair">
               <input
                 className="about-editor__egg"
-                placeholder="🥚 пасхалка: 🐧 / 🐍 / ☕ …"
+                placeholder="🥚 пасхалка: 👾 / 🐧 / 🐍 / ☕ …"
                 value={w.egg ?? ""}
                 maxLength={4}
                 onChange={(e) => setWork(i, { egg: e.target.value })}
